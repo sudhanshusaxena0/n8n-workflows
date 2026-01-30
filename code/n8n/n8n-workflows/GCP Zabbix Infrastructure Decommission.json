@@ -1,0 +1,338 @@
+{
+  "name": "GCP Zabbix Infrastructure Decommission",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/tmp/{{ $json.Project }}.json",
+        "dataPropertyName": "Service_Account_Key",
+        "options": {
+          "append": false
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1264,
+        -384
+      ],
+      "id": "63864550-e359-4530-8bf5-1601248dfb0c",
+      "name": "Write Key to File"
+    },
+    {
+      "parameters": {
+        "authentication": "gitPassword",
+        "operation": "clone",
+        "repositoryPath": "=/tmp/emt-gcp-zabbix",
+        "sourceRepository": "https://github.com/ssinha65_uhg/emt-gcp-zabbix.git"
+      },
+      "type": "n8n-nodes-base.git",
+      "typeVersion": 1,
+      "position": [
+        1712,
+        -384
+      ],
+      "id": "84d0d87b-af39-45d4-95a8-abb89da7ede4",
+      "name": "Clone Repository",
+      "credentials": {
+        "gitPassword": {
+          "id": "spjb0QvfJ4PSdCX2",
+          "name": "Git account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "command": "=cd /tmp/emt-gcp-zabbix\nterraform init"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2160,
+        -384
+      ],
+      "id": "bd583c1f-d4b3-42ff-bb6c-7f6348288d6b",
+      "name": "Terraform init"
+    },
+    {
+      "parameters": {
+        "command": "=cd /tmp/emt-gcp-zabbix\nterraform validate"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2384,
+        -384
+      ],
+      "id": "91074a7b-7e27-4e4b-ac89-9a640ba89153",
+      "name": "Terraform validate"
+    },
+    {
+      "parameters": {
+        "fromEmail": "zabbix-gcp-admin@optum.com",
+        "toEmail": "sudhanshu.sinha@optum.com",
+        "subject": "GCP Zabbix Infrastructure Decommission terraform.tfstate file",
+        "html": "GCP Zabbix Infrastructure Decommission terraform.tfstate file",
+        "options": {
+          "attachments": "data"
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        3056,
+        -384
+      ],
+      "id": "f0ad028d-7f4a-4ca4-baea-334820b70acd",
+      "name": "Send email",
+      "webhookId": "8e5f9ce0-fc66-4d4f-83c7-c1ce4ba6a693",
+      "credentials": {
+        "smtp": {
+          "id": "hlptozjprdl23nBh",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fileSelector": "/tmp/terraform.tfstate",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        2832,
+        -384
+      ],
+      "id": "c0c9ca66-8777-4480-8fa6-f634ecd86a05",
+      "name": "Read terraform.tfstate file"
+    },
+    {
+      "parameters": {
+        "command": "=rm -rf /tmp/emt-gcp-zabbix\nrm -rf /tmp/{{ $('GCP Project Details').item.json.Project }}.json"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        3280,
+        -384
+      ],
+      "id": "a1c9438b-e762-422f-a7f1-836489ebb9b7",
+      "name": "Delete Files"
+    },
+    {
+      "parameters": {
+        "command": "=rm -rf /tmp/emt-gcp-zabbix"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1488,
+        -384
+      ],
+      "id": "95d01581-d58c-4569-ae0a-f006298e61d9",
+      "name": "Delete Repository"
+    },
+    {
+      "parameters": {
+        "command": "=cd /tmp/emt-gcp-zabbix\nterraform destroy -auto-approve -input=false -var=\"service_account_key_path=/tmp/{{ $('GCP Project Details').item.json.Project }}.json\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2608,
+        -384
+      ],
+      "id": "a5b0157d-bba8-43a1-bb80-52d42a4a2504",
+      "name": "Terraform destroy",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "command": "=gcloud auth activate-service-account \\\n    --key-file=/tmp/{{ $('GCP Project Details').item.json.Project }}.json \\\n    --project={{ $('GCP Project Details').item.json.Project }}\n\ngcloud compute networks peerings delete 'servicenetworking-googleapis-com' --network=\"{{ $('GCP Project Details').item.json['VPC Name'] }}\" --project=\"{{ $('GCP Project Details').item.json.Project }}\"\n"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1936,
+        -384
+      ],
+      "id": "0e213270-cde0-4ad0-86d4-a50b23496aa4",
+      "name": "Delete Network Peerings"
+    },
+    {
+      "parameters": {
+        "authentication": "basicAuth",
+        "formTitle": "GCP Zabbix Infrastructure Decommission",
+        "formDescription": "GCP Zabbix Infrastructure Decommission",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Project",
+              "defaultValue": "seclhugq-9k0b-zxjf-y642-xmc4kc"
+            },
+            {
+              "fieldLabel": "Service_Account_Email",
+              "defaultValue": "terraform@seclhugq-9k0b-zxjf-y642-xmc4kc.iam.gserviceaccount.com"
+            },
+            {
+              "fieldLabel": "Service_Account_Key",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "acceptFileTypes": ".json",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "VPC Name",
+              "defaultValue": "vpc01",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false,
+          "buttonLabel": "Submit"
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        1040,
+        -384
+      ],
+      "id": "ec1523b0-c9ea-4f70-8d8b-6d16d8fca8d7",
+      "name": "GCP Project Details",
+      "webhookId": "19334115-a058-457d-b1b7-cc6be6fda542",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "fmOghJeqsYrdrXeS",
+          "name": "n8n basic auth"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Write Key to File": {
+      "main": [
+        [
+          {
+            "node": "Delete Repository",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clone Repository": {
+      "main": [
+        [
+          {
+            "node": "Delete Network Peerings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Terraform init": {
+      "main": [
+        [
+          {
+            "node": "Terraform validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Terraform validate": {
+      "main": [
+        [
+          {
+            "node": "Terraform destroy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send email": {
+      "main": [
+        [
+          {
+            "node": "Delete Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read terraform.tfstate file": {
+      "main": [
+        [
+          {
+            "node": "Send email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Repository": {
+      "main": [
+        [
+          {
+            "node": "Clone Repository",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Terraform destroy": {
+      "main": [
+        [
+          {
+            "node": "Read terraform.tfstate file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Network Peerings": {
+      "main": [
+        [
+          {
+            "node": "Terraform init",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GCP Project Details": {
+      "main": [
+        [
+          {
+            "node": "Write Key to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "bb2157b4-eced-42d6-8c97-74fbb9cb4aba",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4f9b7d8392fb9b22e1572f122d2199da1a316578c69792bb5ebd6447fbba818b"
+  },
+  "id": "xDFb9rWculBLbCFM",
+  "tags": []
+}

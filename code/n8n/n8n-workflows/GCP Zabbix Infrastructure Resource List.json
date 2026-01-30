@@ -1,0 +1,233 @@
+{
+  "name": "GCP Zabbix Infrastructure Resource List",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/tmp/{{ $binary.Service_Account_Key.fileName }}",
+        "dataPropertyName": "Service_Account_Key",
+        "options": {
+          "append": false
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        -480
+      ],
+      "id": "96a98219-28c3-490e-985c-ca95599ea7d2",
+      "name": "Write Key to File"
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "stdout",
+        "options": {
+          "fileName": "GCP Resources.csv"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        96,
+        -480
+      ],
+      "id": "80df284e-0f68-4d4e-ab41-277e667a6dee",
+      "name": "Convert Resource List to CSV file"
+    },
+    {
+      "parameters": {
+        "fromEmail": "zabbix-gcp-admin@optum.com",
+        "toEmail": "sudhanshu.sinha@optum.com",
+        "subject": "={{ $workflow.name }} [ Project: {{ $('GCP Project Details').item.json.Project }} ]",
+        "emailFormat": "text",
+        "text": "={{ $workflow.name }}\n\nProject - {{ $('GCP Project Details').item.json.Project }}\n\nService Account - {{ $('GCP Project Details').item.json.Service_Account_Email }}",
+        "options": {
+          "appendAttribution": false,
+          "attachments": "data"
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        320,
+        -480
+      ],
+      "id": "46f533db-9cf8-4367-bc56-92ee60b4bc80",
+      "name": "Send List as Email Attachment",
+      "webhookId": "07db6323-7e50-4801-8f83-f5e02b48de89",
+      "credentials": {
+        "smtp": {
+          "id": "hlptozjprdl23nBh",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "command": "=gcloud asset search-all-resources \\\n    --scope=projects/{{ $('GCP Project Details').item.json.Project }} \\\n    --format=\"csv(assetType, name, displayName, location)\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -128,
+        -480
+      ],
+      "id": "f87dcac0-1777-44d3-92f0-ec540ed5b7cb",
+      "name": "List GCP Resources"
+    },
+    {
+      "parameters": {
+        "command": "=gcloud auth activate-service-account --key-file={{ $json.fileName }} &> /dev/null\n\ngcloud config set account {{ $json.Service_Account_Email }} &> /dev/null\n\ngcloud config set project {{ $json.Project }} &> /dev/null"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -352,
+        -480
+      ],
+      "id": "7b36d5f0-6ab1-4261-876f-05207fb81cd1",
+      "name": "GCP Login",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "command": "=gcloud auth revoke {{ $('GCP Project Details').item.json.Service_Account_Email }} &> /dev/null\nrm -rf {{ $('Write Key to File').item.json.fileName }}\nrm -rf ~/.config/gcloud/*"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        544,
+        -480
+      ],
+      "id": "c0b7fbeb-9a59-45d5-874f-bf3110b07e79",
+      "name": "GCP Logout"
+    },
+    {
+      "parameters": {
+        "authentication": "basicAuth",
+        "formTitle": "GCP Zabbix Infrastructure Resource List",
+        "formDescription": "GCP Zabbix Infrastructure Resource List",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Project",
+              "defaultValue": "seclhugq-9k0b-zxjf-y642-xmc4kc"
+            },
+            {
+              "fieldLabel": "Service_Account_Email",
+              "defaultValue": "terraform@seclhugq-9k0b-zxjf-y642-xmc4kc.iam.gserviceaccount.com"
+            },
+            {
+              "fieldLabel": "Service_Account_Key",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "acceptFileTypes": ".json",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false,
+          "buttonLabel": "Submit"
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        -800,
+        -480
+      ],
+      "id": "56523e1b-7f01-4cb0-a94e-d768f8bf12a5",
+      "name": "GCP Project Details",
+      "webhookId": "2fede455-97e7-4cec-ba50-34c85e1ccdae",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "fmOghJeqsYrdrXeS",
+          "name": "n8n basic auth"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Write Key to File": {
+      "main": [
+        [
+          {
+            "node": "GCP Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Resource List to CSV file": {
+      "main": [
+        [
+          {
+            "node": "Send List as Email Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send List as Email Attachment": {
+      "main": [
+        [
+          {
+            "node": "GCP Logout",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List GCP Resources": {
+      "main": [
+        [
+          {
+            "node": "Convert Resource List to CSV file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GCP Login": {
+      "main": [
+        [
+          {
+            "node": "List GCP Resources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GCP Project Details": {
+      "main": [
+        [
+          {
+            "node": "Write Key to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f34dba41-e3a1-4fec-b29c-9b7da70bb5c2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4f9b7d8392fb9b22e1572f122d2199da1a316578c69792bb5ebd6447fbba818b"
+  },
+  "id": "M1QYFcw1pZ03L7BM",
+  "tags": []
+}
